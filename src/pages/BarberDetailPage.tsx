@@ -1,0 +1,361 @@
+import { useState } from 'react';
+import { useApp } from '@/contexts/AppContext';
+import { motion, AnimatePresence } from 'framer-motion';
+import { QRCodeSVG } from 'qrcode.react';
+import {
+  ArrowLeft, Star, MapPin, Clock, Car, BadgeCheck,
+  Scissors, Heart, Share2, Phone, MessageSquare,
+  Calendar, Navigation, Globe, AlertTriangle
+} from 'lucide-react';
+
+const daysAr = ['الأحد', 'الاثنين', 'الثلاثاء', 'الأربعاء', 'الخميس', 'الجمعة', 'السبت'];
+const daysEn = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
+
+/** Open Google Maps with directions */
+function openGoogleMaps(location: string, wilaya: string) {
+  const query = encodeURIComponent(`${location}, ${wilaya}, Algeria`);
+  window.open(`https://www.google.com/maps/dir/?api=1&destination=${query}`, '_blank');
+}
+
+/** Open location in Google Maps search */
+function viewOnMap(location: string, wilaya: string) {
+  const query = encodeURIComponent(`${location}, ${wilaya}, Algeria`);
+  window.open(`https://www.google.com/maps/search/?api=1&query=${query}`, '_blank');
+}
+
+export default function BarberDetailPage() {
+  const { themeConfig, screenParams, navigate, goBack } = useApp();
+  const [activeSection, setActiveSection] = useState<'services' | 'reviews' | 'portfolio' | 'hours'>('services');
+  const [likedImages, setLikedImages] = useState<Set<number>>(new Set());
+  const [showQR, setShowQR] = useState(false);
+  const [showReport, setShowReport] = useState(false);
+  const [reportReason, setReportReason] = useState('');
+  const [reportSent, setReportSent] = useState(false);
+
+  const { barbers } = useApp();
+  const barber = barbers.find(b => b.id === screenParams?.barberId);
+
+  if (!barber) {
+    return (
+      <div className="h-screen flex flex-col items-center justify-center" style={{ backgroundColor: themeConfig.colors.background }}>
+        <img src="/logo-icon.png" alt="Hallaqi" className="w-16 h-16 mb-4 opacity-30" />
+        <p className="text-sm font-medium" style={{ color: themeConfig.colors.textMuted }}>الحلاق غير موجود</p>
+        <button onClick={goBack} className="mt-4 px-4 py-2 rounded-xl text-xs font-bold text-white" style={{ backgroundColor: themeConfig.colors.primary }}>رجوع</button>
+      </div>
+    );
+  }
+
+  const toggleImageLike = (idx: number) => {
+    setLikedImages(prev => { const n = new Set(prev); n.has(idx) ? n.delete(idx) : n.add(idx); return n; });
+  };
+
+  const handleReport = () => {
+    if (!reportReason.trim()) return;
+    setReportSent(true);
+    setTimeout(() => { setShowReport(false); setReportSent(false); setReportReason(''); }, 2000);
+  };
+
+  return (
+    <motion.div initial={{ opacity: 0, x: 300 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 300 }}
+      transition={{ type: 'spring', damping: 25, stiffness: 200 }}
+      className="pb-20 min-h-screen" style={{ backgroundColor: themeConfig.colors.background }}>
+
+      {/* === COVER === */}
+      <div className="relative h-56">
+        <img src={barber.coverImage} alt={barber.name} className="w-full h-full object-cover" />
+        <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent" />
+        <div className="absolute top-4 left-0 right-0 flex items-center justify-between px-4">
+          <button onClick={goBack} className="w-10 h-10 rounded-full bg-black/30 backdrop-blur-md flex items-center justify-center">
+            <ArrowLeft size={20} className="text-white" />
+          </button>
+          <div className="flex gap-2">
+            <button onClick={() => setShowReport(true)} className="w-10 h-10 rounded-full bg-black/30 backdrop-blur-md flex items-center justify-center">
+              <AlertTriangle size={18} className="text-white" />
+            </button>
+            <button className="w-10 h-10 rounded-full bg-black/30 backdrop-blur-md flex items-center justify-center">
+              <Share2 size={18} className="text-white" />
+            </button>
+            <button className="w-10 h-10 rounded-full bg-black/30 backdrop-blur-md flex items-center justify-center">
+              <Heart size={18} className="text-white" />
+            </button>
+          </div>
+        </div>
+        <div className="absolute bottom-4 right-4">
+          <span className="px-3 py-1 rounded-full text-xs font-bold text-white" style={{ backgroundColor: themeConfig.colors.primary }}>{barber.priceRange}</span>
+        </div>
+      </div>
+
+      {/* === PROFILE INFO === */}
+      <div className="px-4 -mt-10 relative z-10">
+        <div className="flex items-end gap-3">
+          <img src={barber.avatar} alt={barber.name}
+            className="w-20 h-20 rounded-2xl object-cover border-4"
+            style={{ borderColor: themeConfig.colors.background }} />
+          <div className="pb-1">
+            <div className="flex items-center gap-2">
+              <h1 className="text-lg font-bold text-white" style={{ textShadow: '0 2px 4px rgba(0,0,0,0.3)' }}>{barber.name}</h1>
+              {barber.isVerified && <BadgeCheck size={18} className="text-sky-400" />}
+            </div>
+            <div className="flex items-center gap-1 mt-0.5">
+              <Star size={14} className="text-yellow-400 fill-yellow-400" />
+              <span className="text-sm font-bold text-white">{barber.rating}</span>
+              <span className="text-xs text-white/70">({barber.reviewCount} تقييم)</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* === STATS === */}
+      <div className="px-4 mt-4">
+        <div className="flex gap-3">
+          {[
+            { icon: Clock, label: `${barber.yearsOfExperience} سنة`, sub: 'خبرة' },
+            { icon: MapPin, label: barber.distance, sub: 'المسافة' },
+            { icon: barber.isMobile ? Car : Scissors, label: barber.isMobile ? 'متنقل' : 'في الصالون', sub: 'نوع الخدمة' },
+            { icon: Star, label: `${barber.rating}`, sub: 'التقييم' },
+          ].map((stat, i) => (
+            <div key={i} className="flex-1 rounded-xl p-2.5 text-center border" style={{ backgroundColor: themeConfig.colors.surface, borderColor: themeConfig.colors.border }}>
+              <stat.icon size={16} style={{ color: themeConfig.colors.primary }} className="mx-auto mb-1" />
+              <p className="text-xs font-bold" style={{ color: themeConfig.colors.text }}>{stat.label}</p>
+              <p className="text-[10px]" style={{ color: themeConfig.colors.textMuted }}>{stat.sub}</p>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* === TAGS === */}
+      <div className="px-4 mt-3 flex gap-1.5 flex-wrap">
+        {barber.tags.map(tag => (
+          <span key={tag} className="px-2.5 py-1 rounded-full text-[10px] font-bold" style={{ backgroundColor: themeConfig.colors.primary + '12', color: themeConfig.colors.primary }}>
+            {tag === 'active' ? 'متفاعل' : tag === 'old-school' ? 'تقليدي' : tag === 'scissors-user' ? 'يستخدم المقص' :
+             tag === 'mobile' ? 'متنقل' : tag === 'verified' ? 'موثق' : tag === 'trending' ? 'رائج' :
+             tag === 'new' ? 'جديد' : tag === 'top-rated' ? 'الأعلى تقييماً' : tag === 'quick' ? 'سريع' : 'فاخر'}
+          </span>
+        ))}
+      </div>
+
+      {/* === BIO === */}
+      <div className="px-4 mt-4">
+        <p className="text-sm leading-relaxed" style={{ color: themeConfig.colors.textMuted }}>{barber.bio}</p>
+      </div>
+
+      {/* === QUICK ACTIONS === */}
+      <div className="px-4 mt-4 flex gap-2">
+        <button onClick={() => navigate('booking-flow', { barberId: barber.id })}
+          className="flex-1 h-12 rounded-xl text-sm font-bold text-white flex items-center justify-center gap-2" style={{ backgroundColor: themeConfig.colors.primary }}>
+          <Calendar size={18} /> احجز موعداً
+        </button>
+        <button onClick={() => setShowQR(true)}
+          className="h-12 w-12 rounded-xl border flex items-center justify-center" style={{ borderColor: themeConfig.colors.border, color: themeConfig.colors.text }}>
+          <img src="/logo-symbol.png" alt="QR" className="w-5 h-5" />
+        </button>
+        <button className="h-12 w-12 rounded-xl border flex items-center justify-center" style={{ borderColor: themeConfig.colors.border, color: themeConfig.colors.text }}>
+          <Phone size={18} />
+        </button>
+        <button className="h-12 w-12 rounded-xl border flex items-center justify-center" style={{ borderColor: themeConfig.colors.border, color: themeConfig.colors.text }}>
+          <MessageSquare size={18} />
+        </button>
+      </div>
+
+      {/* === QR MODAL === */}
+      {showQR && (
+        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-6" onClick={() => setShowQR(false)}>
+          <motion.div initial={{ scale: 0.8 }} animate={{ scale: 1 }} className="p-6 rounded-3xl bg-white max-w-xs w-full text-center" onClick={e => e.stopPropagation()}>
+            <div className="flex items-center justify-center gap-2 mb-4">
+              <img src="/logo-symbol.png" alt="Hallaqi" className="w-6 h-6" />
+              <span className="text-sm font-bold" style={{ color: themeConfig.colors.primary }}>HALLAQI</span>
+            </div>
+            <div className="p-3 rounded-2xl inline-block" style={{ backgroundColor: themeConfig.colors.background }}>
+              <QRCodeSVG value={`https://hallaqi.app/barber/${barber.id}`} size={180} bgColor="#FFFFFF" fgColor={themeConfig.colors.primary} level="H"
+                imageSettings={{ src: '/logo-symbol.png', height: 36, width: 36, excavate: true }} />
+            </div>
+            <h3 className="text-base font-bold mt-3" style={{ color: themeConfig.colors.text }}>{barber.name}</h3>
+            <p className="text-xs mt-1" style={{ color: themeConfig.colors.textMuted }}>امسح للوصول للبروفايل</p>
+            <button onClick={() => setShowQR(false)} className="mt-4 w-full h-10 rounded-xl text-sm font-bold text-white" style={{ backgroundColor: themeConfig.colors.primary }}>إغلاق</button>
+          </motion.div>
+        </motion.div>
+      )}
+
+      {/* === REPORT MODAL === */}
+      {showReport && (
+        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-6" onClick={() => setShowReport(false)}>
+          <motion.div initial={{ scale: 0.8, y: 20 }} animate={{ scale: 1, y: 0 }} className="p-5 rounded-2xl bg-white max-w-sm w-full" onClick={e => e.stopPropagation()}>
+            {!reportSent ? (
+              <>
+                <div className="flex items-center gap-2 mb-3">
+                  <AlertTriangle size={20} style={{ color: themeConfig.colors.error }} />
+                  <h3 className="text-sm font-bold" style={{ color: themeConfig.colors.text }}>الإبلاغ عن {barber.name}</h3>
+                </div>
+                <p className="text-xs mb-3" style={{ color: themeConfig.colors.textMuted }}>اختر سبب الإبلاغ:</p>
+                <div className="space-y-2 mb-4">
+                  {['محتوى غير لائق', 'معلومات مضللة', 'سلوك غير مهني', 'سبب آخر'].map(reason => (
+                    <button key={reason} onClick={() => setReportReason(reason)}
+                      className="w-full text-right px-3 py-2 rounded-xl text-xs font-medium border transition-all"
+                      style={{ backgroundColor: reportReason === reason ? themeConfig.colors.error + '10' : themeConfig.colors.background, borderColor: reportReason === reason ? themeConfig.colors.error : themeConfig.colors.border, color: reportReason === reason ? themeConfig.colors.error : themeConfig.colors.text }}>
+                      {reason}
+                    </button>
+                  ))}
+                </div>
+                <div className="flex gap-2">
+                  <button onClick={() => setShowReport(false)} className="flex-1 h-10 rounded-xl text-xs font-bold border" style={{ borderColor: themeConfig.colors.border, color: themeConfig.colors.textMuted }}>إلغاء</button>
+                  <button onClick={handleReport} disabled={!reportReason}
+                    className="flex-1 h-10 rounded-xl text-xs font-bold text-white disabled:opacity-40" style={{ backgroundColor: themeConfig.colors.error }}>إرسال</button>
+                </div>
+              </>
+            ) : (
+              <div className="text-center py-4">
+                <div className="w-12 h-12 rounded-full mx-auto mb-2 flex items-center justify-center" style={{ backgroundColor: themeConfig.colors.success + '15' }}>
+                  <BadgeCheck size={24} style={{ color: themeConfig.colors.success }} />
+                </div>
+                <p className="text-sm font-bold" style={{ color: themeConfig.colors.success }}>تم إرسال الإبلاغ</p>
+                <p className="text-xs mt-1" style={{ color: themeConfig.colors.textMuted }}>سنراجع البلاغ في أقرب وقت</p>
+              </div>
+            )}
+          </motion.div>
+        </motion.div>
+      )}
+
+      {/* === MAP SECTION === */}
+      <div className="px-4 mt-5">
+        <div className="flex items-center justify-between mb-2">
+          <h3 className="text-sm font-bold" style={{ color: themeConfig.colors.text }}>الموقع على الخريطة</h3>
+          <span className="text-[10px] flex items-center gap-1" style={{ color: themeConfig.colors.textMuted }}>
+            <Navigation size={10} /> {barber.distance}
+          </span>
+        </div>
+        <div className="relative rounded-2xl overflow-hidden border aspect-[2/1]" style={{ borderColor: themeConfig.colors.border }}>
+          <iframe title={`خريطة ${barber.name}`} width="100%" height="100%" style={{ border: 0, minHeight: '160px' }} loading="lazy" allowFullScreen referrerPolicy="no-referrer-when-downgrade"
+            src={`https://www.openstreetmap.org/export/embed.html?bbox=2.9%2C36.68%2C3.25%2C36.85&layer=mapnik&marker=36.7538%2C3.0588`} />
+          <div className="absolute bottom-2 left-2 px-2 py-1 rounded-lg bg-white/90 backdrop-blur text-[10px] font-medium shadow-sm" style={{ color: themeConfig.colors.text }}>
+            <MapPin size={10} className="inline ml-1" />{barber.location}, {barber.wilaya}
+          </div>
+        </div>
+        {/* Map Action Buttons */}
+        <div className="flex gap-2 mt-2">
+          <button onClick={() => viewOnMap(barber.location, barber.wilaya)}
+            className="flex-1 h-9 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 border"
+            style={{ borderColor: themeConfig.colors.border, color: themeConfig.colors.primary, backgroundColor: themeConfig.colors.surface }}>
+            <Globe size={14} /> عرض على الخريطة
+          </button>
+          <button onClick={() => openGoogleMaps(barber.location, barber.wilaya)}
+            className="flex-1 h-9 rounded-xl text-xs font-bold text-white flex items-center justify-center gap-1.5"
+            style={{ backgroundColor: themeConfig.colors.success }}>
+            <Navigation size={14} /> الاتجاهات (Google Maps)
+          </button>
+        </div>
+      </div>
+
+      {/* === SECTION TABS === */}
+      <div className="px-4 mt-6 flex gap-1 p-1 rounded-xl" style={{ backgroundColor: themeConfig.colors.surface }}>
+        {[
+          { key: 'services' as const, label: 'الخدمات' },
+          { key: 'reviews' as const, label: 'التقييمات' },
+          { key: 'portfolio' as const, label: 'الأعمال' },
+          { key: 'hours' as const, label: 'المواعيد' },
+        ].map(tab => (
+          <button key={tab.key} onClick={() => setActiveSection(tab.key)}
+            className="flex-1 py-2 rounded-lg text-xs font-bold transition-all"
+            style={{ backgroundColor: activeSection === tab.key ? themeConfig.colors.primary : 'transparent', color: activeSection === tab.key ? '#fff' : themeConfig.colors.textMuted }}>
+            {tab.label}
+          </button>
+        ))}
+      </div>
+
+      {/* === SECTION CONTENT === */}
+      <AnimatePresence mode="wait">
+        {activeSection === 'services' && (
+          <motion.div key="services" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }}
+            className="px-4 mt-3 space-y-2">
+            {barber.services.map(svc => (
+              <div key={svc.id} className="p-3 rounded-xl border flex items-center justify-between" style={{ backgroundColor: themeConfig.colors.surface, borderColor: themeConfig.colors.border }}>
+                <div>
+                  <p className="text-sm font-bold" style={{ color: themeConfig.colors.text }}>{svc.name}</p>
+                  {svc.description && <p className="text-[11px] mt-0.5" style={{ color: themeConfig.colors.textMuted }}>{svc.description}</p>}
+                  <div className="flex items-center gap-3 mt-1">
+                    <span className="text-[10px] flex items-center gap-1" style={{ color: themeConfig.colors.textMuted }}><Clock size={10} /> {svc.duration} دقيقة</span>
+                  </div>
+                </div>
+                <div className="text-left">
+                  <p className="text-sm font-bold" style={{ color: themeConfig.colors.primary }}>{svc.price} دج</p>
+                </div>
+              </div>
+            ))}
+          </motion.div>
+        )}
+
+        {activeSection === 'reviews' && (
+          <motion.div key="reviews" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }}
+            className="px-4 mt-3 space-y-3">
+            {barber.reviews && barber.reviews.length > 0 ? barber.reviews.map(review => (
+              <div key={review.id} className="p-3 rounded-xl border" style={{ backgroundColor: themeConfig.colors.surface, borderColor: themeConfig.colors.border }}>
+                <div className="flex items-center gap-2 mb-2">
+                  <img src={review.authorAvatar} alt={review.authorName} className="w-8 h-8 rounded-lg object-cover" />
+                  <div className="flex-1">
+                    <p className="text-xs font-bold" style={{ color: themeConfig.colors.text }}>{review.authorName}</p>
+                    <div className="flex items-center gap-1">
+                      {Array.from({ length: 5 }).map((_, i) => (
+                        <Star key={i} size={10} className={i < review.rating ? 'text-yellow-400 fill-yellow-400' : 'text-gray-300'} />
+                      ))}
+                    </div>
+                  </div>
+                  <span className="text-[10px]" style={{ color: themeConfig.colors.textMuted }}>{review.date}</span>
+                </div>
+                <p className="text-xs leading-relaxed" style={{ color: themeConfig.colors.textMuted }}>{review.comment}</p>
+                {review.reply && (
+                  <div className="mt-2 p-2 rounded-lg" style={{ backgroundColor: themeConfig.colors.background }}>
+                    <p className="text-[10px] font-bold" style={{ color: themeConfig.colors.primary }}>رد {barber.name}:</p>
+                    <p className="text-[11px]" style={{ color: themeConfig.colors.textMuted }}>{review.reply}</p>
+                  </div>
+                )}
+              </div>
+            )) : (
+              <div className="text-center py-8">
+                <Star size={40} style={{ color: themeConfig.colors.textMuted + '30' }} className="mx-auto" />
+                <p className="text-sm mt-2" style={{ color: themeConfig.colors.textMuted }}>لا توجد تقييمات بعد</p>
+              </div>
+            )}
+          </motion.div>
+        )}
+
+        {activeSection === 'portfolio' && (
+          <motion.div key="portfolio" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} className="px-4 mt-3">
+            <div className="grid grid-cols-2 gap-2">
+              {barber.portfolio.map((img, idx) => (
+                <div key={idx} className="relative rounded-xl overflow-hidden aspect-square">
+                  <img src={img} alt={`عمل ${idx + 1}`} className="w-full h-full object-cover" />
+                  <button onClick={() => toggleImageLike(idx)}
+                    className="absolute top-2 right-2 w-8 h-8 rounded-full bg-black/30 backdrop-blur flex items-center justify-center">
+                    <Heart size={14} className={likedImages.has(idx) ? 'text-red-500 fill-red-500' : 'text-white'} />
+                  </button>
+                </div>
+              ))}
+            </div>
+          </motion.div>
+        )}
+
+        {activeSection === 'hours' && (
+          <motion.div key="hours" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }}
+            className="px-4 mt-3 space-y-1">
+            {daysEn.map((day, idx) => {
+              const hours = barber.workingHours[day];
+              const isToday = idx === new Date().getDay();
+              return (
+                <div key={day} className="flex items-center justify-between py-2.5 px-3 rounded-xl"
+                  style={{ backgroundColor: isToday ? themeConfig.colors.primary + '08' : themeConfig.colors.surface, border: isToday ? `1px solid ${themeConfig.colors.primary}20` : 'none' }}>
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm font-medium" style={{ color: themeConfig.colors.text }}>{daysAr[idx]}</span>
+                    {isToday && <span className="text-[9px] px-1.5 py-0.5 rounded-full font-bold text-white" style={{ backgroundColor: themeConfig.colors.primary }}>اليوم</span>}
+                  </div>
+                  {hours?.isOpen
+                    ? <span className="text-xs" style={{ color: themeConfig.colors.textMuted }}>{hours.open} - {hours.close}</span>
+                    : <span className="text-xs font-bold" style={{ color: themeConfig.colors.error }}>مغلق</span>
+                  }
+                </div>
+              );
+            })}
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </motion.div>
+  );
+}

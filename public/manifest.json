@@ -1,0 +1,27 @@
+{
+  "name": "Hallaqi - حلاقي",
+  "short_name": "Hallaqi",
+  "description": "منصة حجز الحلاقين والعناية الشخصية الأولى في الجزائر",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#F0FDFA",
+  "theme_color": "#0F766E",
+  "orientation": "portrait",
+  "icons": [
+    {
+      "src": "/logo-icon.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/logo-symbol.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ],
+  "lang": "ar",
+  "dir": "rtl",
+  "categories": ["lifestyle", "utilities"],
+  "screenshots": []
+}
